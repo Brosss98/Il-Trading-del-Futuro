@@ -23,6 +23,21 @@ jobs:
       - name: Build the book
         run: mdbook build
 
+      - name: Generate sitemap.xml
+        run: |
+          echo '<?xml version="1.0" encoding="UTF-8"?>' > book/sitemap.xml
+          echo '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' >> book/sitemap.xml
+          find book -name "*.html" ! -name "404.html" ! -name "print.html" | while read -r file; do
+            path="${file#book/}"
+            if [ "$path" = "index.html" ]; then
+              url="https://brosss98.github.io/Il-Trading-del-Futuro/"
+            else
+              url="https://brosss98.github.io/Il-Trading-del-Futuro/${path}"
+            fi
+            echo "  <url><loc>${url}</loc></url>" >> book/sitemap.xml
+          done
+          echo '</urlset>' >> book/sitemap.xml
+
       - name: Setup Pages
         uses: actions/configure-pages@v4
 
