@@ -23,19 +23,45 @@ jobs:
       - name: Build the book
         run: mdbook build
 
-      - name: Generate sitemap.xml
+      - name: Generate sitemap.xml with lastmod
         run: |
           echo '<?xml version="1.0" encoding="UTF-8"?>' > book/sitemap.xml
           echo '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' >> book/sitemap.xml
+          
           find book -name "*.html" ! -name "404.html" ! -name "print.html" | while read -r file; do
             path="${file#book/}"
+            
+            # Determine the correct URL
             if [ "$path" = "index.html" ]; then
               url="https://brosss98.github.io/Il-Trading-del-Futuro/"
             else
               url="https://brosss98.github.io/Il-Trading-del-Futuro/${path}"
             fi
-            echo "  <url><loc>${url}</loc></url>" >> book/sitemap.xml
+            
+            # Find the corresponding source file in src/ to read the git date (e.g., book/chapter/file.html -> src/chapter/file.md)
+            # If not found directly, check for an associated .md file or use the current date
+            src_file="src/${path%.html}.md"
+            if [ ! -f "$src_file" ]; then
+              src_file="src/${path}"
+            fi
+            
+            if [ -f "$src_file" ]; then
+              # Extract the last commit date of the file and format it to YYYY-MM-DD
+              lastmod=$(git log -1 --format="%ai" -- "$src_file" | cut -d ' ' -f 1)
+            fi
+            
+            # Fallback to current date if git cannot find the file or date
+            if [ -z "$lastmod" ]; then
+              lastmod=$(date +%Y-%m-d)
+            fi
+            
+            # Write the url element with lastmod
+            echo "  <url>" >> book/sitemap.xml
+            echo "    <loc>${url}</loc>" >> book/sitemap.xml
+            echo "    <lastmod>${lastmod}</lastmod>" >> book/sitemap.xml
+            echo "  </url>" >> book/sitemap.xml
           done
+          
           echo '</urlset>' >> book/sitemap.xml
 
       - name: Setup Pages
